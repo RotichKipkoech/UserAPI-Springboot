@@ -1,8 +1,10 @@
 package com.users.User.Controller;
 
 import com.users.User.Models.User;
+import com.users.User.Models.WithdrawalRequest;
 import com.users.User.Repo.UserRepo;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -42,7 +44,27 @@ public class UserController {
         User deleteUser=userRepo.findById(id).get();
         userRepo.delete(deleteUser);
         return "Delete user with id:" +id;
+    }
 
+    @PostMapping(value = "/withdraw")
+    public ResponseEntity<String> withdrawFunds(@RequestBody WithdrawalRequest request) {
+        User user = userRepo.findById(request.getUserId()).orElseThrow(() -> new RuntimeException("User not found"));
 
+        if (!"active".equalsIgnoreCase(user.getActive())) {
+            return ResponseEntity.badRequest().body("User is not active");
+        }
+
+        if (request.getAmount() % 100 != 0) {
+            return ResponseEntity.badRequest().body("Withdrawal amount must be a multiple of 100");
+        }
+
+        if (user.getBalance() < request.getAmount()) {
+            return ResponseEntity.badRequest().body("Insufficient balance");
+        }
+
+        user.setBalance(user.getBalance() - request.getAmount());
+        userRepo.save(user);
+
+        return ResponseEntity.ok("Withdrawal successful");
     }
 }
